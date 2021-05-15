@@ -12,6 +12,7 @@ class searching
     function get_query_and_data($query_data)
     {    
         $email='';
+        $email_array = array();
         $expert_and_company=array();
         $data=array();
         $input_new=$this->input;
@@ -28,8 +29,7 @@ class searching
         $pattern_date_btn="/\b(today|last_week|last_month)\b/";
         if(preg_match_all($pattern_date_btn, $input_new, $output) )
         {
-            $date_btn=$output[0][0]; 
-              
+            $date_btn=$output[0][0];
         }
         if ($date_btn!='')
         {
@@ -45,7 +45,6 @@ class searching
             {
                 $date_from=date("Y-m-d", strtotime("last week monday"));
                 //var_dump($date_from);
-
                 //echo "<br><br>";
                 $date_to=date("Y-m-d", strtotime("last week sunday"));
                 //var_dump($date_to);
@@ -57,20 +56,23 @@ class searching
             {
                 $date_from=date("Y-m-d", strtotime("first day of previous month"));
                 //var_dump($date_from);
-    
                 $date_to= date("Y-m-d", strtotime("last day of previous month"));
                 //var_dump($date_to);
                 $this->date_filter['month_from']="".$date_from."";
                 $this->date_filter['month_to']="".$date_to."";
             }
-            
         }
         $input_new= preg_replace($pattern_date_btn, '', $input_new); 
 
         $pattern_email= "/\b[-0-9a-zA-Z.+_]+@[-0-9a-zA-Z.+_]+.[a-zA-Z]{2,4}\b/";
         if(preg_match_all($pattern_email, $input_new, $output) )
         {
-            $email=$output[0][0];    
+            $value_q['type']='email';
+            $email_ex_comp=$output[0];
+            for ($i=0; $i < sizeof($email_ex_comp); $i++) 
+            {
+                array_push($email_array, $email_ex_comp[$i]); 
+            }    
         }
         $input_new= preg_replace('/\b[\d]+\b/', '', $input_new); 
         $input_new = preg_replace("/\b[-0-9a-zA-Z.+_]+@[-0-9a-zA-Z.+_]+.[a-zA-Z]{2,4}\b/",'',$input_new);  
@@ -82,12 +84,12 @@ class searching
             {   
                 array_push($expert_and_company, $name_ex_comp[$i]); 
             }
-             
         }
         $data['string']=$expert_and_company; 
         array_push($data['string'], $email); 
-        $data['email']=$email;    
-        if($data['string'][0]='' AND $data['email']='')
+        
+        $data['email']=$email_array;
+        if($data['string'][0]='' AND !empty($data['email']))
         {
             echo "string";
         }
@@ -109,20 +111,24 @@ class searching
                         $query='SELECT '.$value_q['get_colms'].' FROM '.$value_q['table_name'].' WHERE '.$append_string_in_sql.'';
                         array_push($query_array, $query);  
                     }
-                    
                     array_push($get_ids,$value_q['get_id']);   
                 }
             }
             if(!empty($data['email']))
-            {
-                if ($value_q['type']=='email') 
-                {   
-                    $query='SELECT '.$value_q['get_colms'].' FROM '.$value_q['table_name'].' WHERE '.$value_q['search_col_name'].'="'.$email.'"';
+            { 
+                if(!empty($email_array))
+                {
+                    $attachment=array();
+                    foreach ($email_array as $key => $value) 
+                    {    
+                        array_push($attachment,''.'email LIKE "%'.$value.'%"'); 
+                    }
+                    $append_string_in_sql=implode(' OR ', $attachment);
+                    $query='SELECT '.$value_q['get_colms'].' FROM '.$value_q['table_name'].' WHERE '.$append_string_in_sql.'';
                     array_push($query_array, $query);
                     array_push($get_ids,$value_q['get_id']); 
                 }
             }
-
         }
            
         $data['sub_querys']=$query_array;
